@@ -1,36 +1,145 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RemindService
 
-## Getting Started
+Сервис напоминаний для мастеров по ремонту бытовой техники.
 
-First, run the development server:
+## 📋 Описание
+
+RemindService помогает мастерам вести базу клиентов, автоматически отправлять напоминания о предстоящих визитах и предлагать профилактическое обслуживание через 11 месяцев.
+
+### Основные возможности:
+
+- **Управление клиентами** — база клиентов с контактами и историей обращений
+- **Управление заказами** — история визитов с описанием работ и стоимостью
+- **Напоминания** — автоматические уведомления о предстоящих визитах и профилактике
+- **Шаблоны сообщений** — настраиваемые шаблоны для разных типов напоминаний
+- **Telegram интеграция** — отправка напоминаний через Telegram бота
+- **Аналитика** — статистика по клиентам, заказам и заработку
+
+## 🚀 Быстрый старт
+
+### 1. Установка зависимостей
+
+```bash
+cd remind-service
+npm install
+```
+
+### 2. Настройка переменных окружения
+
+Создайте файл `.env.local` в корне проекта:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 3. Настройка Supabase
+
+1. Создайте проект на [supabase.com](https://supabase.com)
+2. Перейдите в SQL Editor
+3. Выполните SQL-скрипт из файла `schema.sql`
+
+### 4. Запуск разработки
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Приложение будет доступно по адресу [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 5. Сборка для продакшена
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## 📁 Структура проекта
 
-To learn more about Next.js, take a look at the following resources:
+```
+remind-service/
+├── src/
+│   ├── app/
+│   │   ├── (auth)/              # Страницы аутентификации
+│   │   │   ├── login/
+│   │   │   └── register/
+│   │   ├── (dashboard)/         # Защищенные страницы
+│   │   │   ├── dashboard/
+│   │   │   ├── clients/
+│   │   │   │   └── [id]/
+│   │   │   ├── templates/
+│   │   │   └── settings/
+│   │   ├── api/
+│   │   │   └── telegram/        # API для отправки Telegram
+│   │   └── page.tsx
+│   ├── components/
+│   │   ├── ui/                  # UI компоненты
+│   │   └── navigation.tsx
+│   ├── lib/
+│   │   └── supabase/            # Supabase клиенты и запросы
+│   └── types/
+│       └── database.ts          # TypeScript типы
+├── schema.sql                   # SQL схема для Supabase
+├── .env.local.example           # Пример переменных окружения
+└── README.md
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🗄️ База данных
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Таблицы:
 
-## Deploy on Vercel
+- **profiles** — профили пользователей (расширяет auth.users)
+- **clients** — клиенты мастеров
+- **orders** — заказы/визиты
+- **templates** — шаблоны сообщений
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### RLS (Row Level Security)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Все таблицы защищены политиками RLS — пользователи видят только свои данные.
+
+## 🔧 Технологии
+
+- **Next.js 15** (App Router) + TypeScript
+- **Tailwind CSS** — стилизация
+- **Supabase** — бэкенд (Auth, Database)
+- **React Hook Form** + **Zod** — валидация форм
+- **date-fns** — работа с датами
+- **lucide-react** — иконки
+
+## 📱 Адаптивность
+
+Приложение полностью адаптивно:
+- **Десктоп** — боковое меню навигации
+- **Мобильные** — нижняя навигационная панель
+
+## 🔐 Аутентификация
+
+Используется Supabase Auth с email/паролем. Все страницы кроме `/login` и `/register` защищены middleware.
+
+## 📤 Отправка напоминаний
+
+### Через Telegram:
+1. Создайте бота через @BotFather
+2. Получите токен бота
+3. Узнайте свой Chat ID через @userinfobot
+4. Добавьте данные в настройках приложения
+
+### Без Telegram:
+Сообщение копируется в буфер обмена для ручной отправки.
+
+## 🚀 Деплой на Vercel
+
+1. Запушьте код на GitHub
+2. Импортируйте проект в [Vercel](https://vercel.com)
+3. Добавьте переменные окружения:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Нажмите Deploy
+
+## 📝 Лицензия
+
+MIT
+
+## 👥 Поддержка
+
+Для вопросов и предложений создайте issue в репозитории.
