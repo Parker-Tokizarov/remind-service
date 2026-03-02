@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { LogOut, Save, Send, User, Phone } from 'lucide-react'
+import { LogOut, Save, Send, User, Phone, Moon, Sun } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState<any | null>(null)
+  const [darkMode, setDarkMode] = useState(false)
   const supabase = createClient()
 
   const {
@@ -38,8 +39,30 @@ export default function SettingsPage() {
   })
 
   useEffect(() => {
+    // Загрузка сохранённой темы
+    const savedTheme = localStorage.getItem('theme')
+    const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    setDarkMode(isDark)
+    applyTheme(isDark)
+    
     loadProfile()
   }, [])
+
+  const applyTheme = (isDark: boolean) => {
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }
+
+  const toggleTheme = () => {
+    const newMode = !darkMode
+    setDarkMode(newMode)
+    applyTheme(newMode)
+  }
 
   const loadProfile = async () => {
     try {
@@ -142,13 +165,28 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
-          <p className="text-gray-600 mt-1">Управление профилем и интеграциями</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Настройки</h1>
+          <p className="text-gray-600 mt-1 dark:text-gray-400">Управление профилем и интеграциями</p>
         </div>
-        <Button variant="danger" onClick={handleLogout}>
-          <LogOut className="w-4 h-4 mr-2" />
-          Выйти
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={toggleTheme}>
+            {darkMode ? (
+              <>
+                <Sun className="w-4 h-4 mr-2" />
+                Светлая
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4 mr-2" />
+                Тёмная
+              </>
+            )}
+          </Button>
+          <Button variant="danger" onClick={handleLogout}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Выйти
+          </Button>
+        </div>
       </div>
 
       {/* Профиль */}

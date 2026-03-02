@@ -60,12 +60,20 @@ export default function ClientsPage() {
 
   const loadClients = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      console.log('Current user:', user?.id)
+      
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
+      
+      console.log('Loaded clients:', data)
       setClients(data || [])
     } catch (error) {
       console.error('Error loading clients:', error)
@@ -109,27 +117,52 @@ export default function ClientsPage() {
 
   const handleSubmitClient = async (data: ClientForm) => {
     try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !user) {
+        console.error('Auth error:', authError)
+        throw new Error('Пользователь не авторизован')
+      }
+
+      console.log('Saving client with user_id:', user.id)
+      console.log('Client data:', data)
+
       if (editingClient) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        const { error: updateError } = await (supabase as any)
           .from('clients')
           .update(data)
           .eq('id', editingClient.id)
+        
+        if (updateError) {
+          console.error('Update error:', updateError)
+          throw updateError
+        }
       } else {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) throw new Error('Пользователь не авторизован')
-
+        const insertData = {
+          ...data,
+          user_id: user.id,
+          last_visit_date: data.last_visit_date || new Date().toISOString().split('T')[0],
+        }
+        
+        console.log('Insert data:', insertData)
+        
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        const { error: insertError } = await (supabase as any)
           .from('clients')
-          .insert({ ...data, user_id: user.id })
+          .insert(insertData)
+        
+        if (insertError) {
+          console.error('Insert error:', insertError)
+          throw insertError
+        }
       }
 
       await loadClients()
       handleCloseModal()
     } catch (error) {
       console.error('Error saving client:', error)
-      alert('Ошибка при сохранении клиента')
+      alert('Ошибка при сохранении клиента: ' + (error as Error).message)
     }
   }
 
