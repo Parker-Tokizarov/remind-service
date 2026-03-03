@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
-import { Plus, Edit, Trash2, Phone, MapPin, Wrench, Calendar } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
+import { Plus, Edit, Trash2, Phone, MapPin, Wrench, Calendar, Search, Download, Filter } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -40,9 +40,12 @@ const equipmentTypes = [
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([])
+  const [filteredClients, setFilteredClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<any | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [equipmentFilter, setEquipmentFilter] = useState('')
   const supabase = createClient()
 
   const {
@@ -75,11 +78,59 @@ export default function ClientsPage() {
       
       console.log('Loaded clients:', data)
       setClients(data || [])
+      setFilteredClients(data || [])
     } catch (error) {
       console.error('Error loading clients:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Поиск и фильтрация
+  useEffect(() => {
+    let result = [...clients]
+
+    // Поиск по имени и телефону
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(client =>
+        client.name.toLowerCase().includes(query) ||
+        client.phone.includes(query) ||
+        (client.address && client.address.toLowerCase().includes(query))
+      )
+    }
+
+    // Фильтр по типу техники
+    if (equipmentFilter) {
+      result = result.filter(client => client.equipment_type === equipmentFilter)
+    }
+
+    setFilteredClients(result)
+  }, [searchQuery, equipmentFilter, clients])
+
+  // Экспорт в CSV
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Имя', 'Телефон', 'Адрес', 'Тип техники', 'Последнее обращение', 'Примечание']
+    const rows = filteredClients.map(client => [
+      client.id,
+      `"${client.name}"`,
+      `"${client.phone}"`,
+      `"${client.address || ''}"`,
+      client.equipment_type,
+      client.last_visit_date,
+      `"${client.notes || ''}"`
+    ])
+
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `clients_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
   }
 
   const handleOpenModal = (client?: any) => {
@@ -192,26 +243,86 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Клиенты</h1>
           <p className="text-gray-600 mt-1">База ваших клиентов</p>
         </div>
-        <Button onClick={() => handleOpenModal()}>
-          <Plus className="w-4 h-4 mr-2" />
-          Добавить клиента
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={handleExportCSV}>
+            <Download className="w-4 h-4 mr-2" />
+            Экспорт CSV
+          </Button>
+          <Button onClick={() => handleOpenModal()}>
+            <Plus className="w-4 h-4 mr-2" />
+            Добавить клиента
+          </Button>
+        </div>
       </div>
 
-      {clients.length === 0 ? (
+      {/* Поиск и фильтры */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Поиск по имени, телефону или адресу..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="md:w-64">
+              <Select
+                value={equipmentFilter}
+                onChange={(e) => setEquipmentFilter(e.target.value)}
+              >
+                <option value="">Все типы техники</option>
+                {equipmentTypes.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+          {(searchQuery || equipmentFilter) && (
+            <div className="mt-3 flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-600">
+                Найдено: {filteredClients.length} из {clients.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('')
+                  setEquipmentFilter('')
+                }}
+                className="ml-auto"
+              >
+                Сбросить
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {filteredClients.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-gray-500">
-            У вас пока нет клиентов. Добавьте первого клиента!
+            {clients.length === 0
+              ? 'У вас пока нет клиентов. Добавьте первого клиента!'
+              : 'Ничего не найдено по заданным критериям поиска.'
+            }
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clients.map((client) => (
+          {filteredClients.map((client) => (
             <Card key={client.id}>
               <CardHeader>
                 <CardTitle className="flex justify-between items-start">

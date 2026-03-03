@@ -10,10 +10,10 @@ import { Wrench } from 'lucide-react'
 import Link from 'next/link'
 
 const registerSchema = z.object({
-  email: z.string().email('Некорректный email'),
-  password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
   full_name: z.string().min(2, 'Введите ваше имя'),
-  phone: z.string().optional(),
+  phone: z.string().min(5, 'Введите корректный номер'),
+  email: z.string().email('Некорректный email').optional(),
+  password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
 })
 
 type RegisterForm = z.infer<typeof registerSchema>
@@ -36,8 +36,11 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
 
+    // Используем телефон как email (если email не указан)
+    const email = data.email || `${data.phone.replace(/\D/g, '')}@remind.local`
+    
     const { error } = await supabase.auth.signUp({
-      email: data.email,
+      email: email,
       password: data.password,
       options: {
         data: {
@@ -51,7 +54,11 @@ export default function RegisterPage() {
       setError(error.message)
       setLoading(false)
     } else {
-      // После регистрации пользователь будет перенаправлен на дашборд
+      // Автоматический вход после регистрации
+      await supabase.auth.signInWithPassword({
+        email: email,
+        password: data.password,
+      })
       router.push('/dashboard')
     }
   }
@@ -68,12 +75,12 @@ export default function RegisterPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Регистрация</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Быстрая регистрация</h2>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-1">
-                ФИО
+                ФИО *
               </label>
               <input
                 id="full_name"
@@ -88,24 +95,8 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                {...register('email')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="you@example.com"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Телефон
+                Телефон *
               </label>
               <input
                 id="phone"
@@ -120,8 +111,27 @@ export default function RegisterPage() {
             </div>
 
             <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email (необязательно)
+              </label>
+              <input
+                id="email"
+                type="email"
+                {...register('email')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="you@example.com"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Если не укажете, создадим автоматически из телефона
+              </p>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Пароль
+                Пароль *
               </label>
               <input
                 id="password"
@@ -149,6 +159,13 @@ export default function RegisterPage() {
               {loading ? 'Регистрация...' : 'Зарегистрироваться'}
             </button>
           </form>
+
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>📝 Примечание:</strong> Email подтверждение не требуется. 
+              Вы сможете войти сразу после регистрации.
+            </p>
+          </div>
 
           <p className="mt-6 text-center text-sm text-gray-600">
             Уже есть аккаунт?{' '}
