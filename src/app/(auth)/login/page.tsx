@@ -10,7 +10,7 @@ import { Wrench } from 'lucide-react'
 import Link from 'next/link'
 
 const loginSchema = z.object({
-  email: z.string().email('Некорректный email'),
+  email: z.string().min(3, 'Введите email или телефон'),
   password: z.string().min(6, 'Пароль должен содержать минимум 6 символов'),
 })
 
@@ -34,13 +34,20 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
+    // Преобразуем телефон в email формат если нужно
+    let email = data.email
+    if (!email.includes('@')) {
+      // Это телефон, преобразуем в email
+      email = `${email.replace(/\D/g, '')}@remind.local`
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
+      email: email,
       password: data.password,
     })
 
     if (error) {
-      setError(error.message)
+      setError('Неверный email/телефон или пароль')
       setLoading(false)
     } else {
       router.push('/dashboard')
@@ -64,23 +71,26 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                Email или телефон *
               </label>
               <input
                 id="email"
-                type="email"
+                type="text"
                 {...register('email')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="you@example.com"
+                placeholder="+7 (999) 000-00-00 или email"
               />
               {errors.email && (
                 <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
               )}
+              <p className="text-xs text-gray-500 mt-1">
+                Введите email или телефон, который указывали при регистрации
+              </p>
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Пароль
+                Пароль *
               </label>
               <input
                 id="password"
@@ -108,6 +118,13 @@ export default function LoginPage() {
               {loading ? 'Вход...' : 'Войти'}
             </button>
           </form>
+
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Совет:</strong> Если регистрировались без email, 
+              введите ваш номер телефона
+            </p>
+          </div>
 
           <p className="mt-6 text-center text-sm text-gray-600">
             Нет аккаунта?{' '}
